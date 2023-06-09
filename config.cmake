@@ -28,8 +28,8 @@
 #  GPU architecture, and then compile by
 #
 #  $ mkdir build; cd build
-#  $ cmake -D OpenCV_DIR=/usr/local/opencv3.4/share/OpenCV/ -D BUILD_CPP_EXAMPLES=0 ..
-#  $ cmake --build .
+#  $ cmake -D OpenCV_DIR=/usr/local/opencv3.4/share/OpenCV/ -D BUILD_CPP_EXAMPLES=0 -D USE_CPP_PACKAGE=0 ..
+#  $ cmake --build . --parallel 12; cd ..; pip install -e ./python
 #
 # Specify `cmake --build . --parallel N` to set the number of parallel compilation jobs.
 # Default is derived from CPUs available.
@@ -80,7 +80,7 @@ set(USE_TVM_OP OFF CACHE BOOL "Enable use of TVM operator build system.")
 
 # set(CMAKE_C_COMPILER "/usr/local/gcc-10.4.0/bin/gcc-10.4" CACHE FILEPATH FORCE)
 # set(CMAKE_CXX_COMPILER "/usr/local/gcc-10.4.0/bin/g++-10.4" CACHE FILEPATH FORCE)
-set(CMAKE_CUDA_COMPILER "/usr/local/cuda-11.2/bin/nvcc")
+set(CMAKE_CUDA_COMPILER "/usr/local/cuda-11.8/bin/nvcc")
 
 
 #---------------------------------------------
