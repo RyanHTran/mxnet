@@ -136,10 +136,10 @@ void pre_calc_for_bilinear_interpolate(
   }
 }
 
-template <typename T>
+template <typename U, typename T>
 void ROIAlignForward(
     const int nthreads,
-    const T* bottom_data,
+    const U* bottom_data,
     const T& spatial_scale,
     const bool position_sensitive,
     const bool continuous_coordinate,
@@ -157,8 +157,8 @@ void ROIAlignForward(
   int n_rois = nthreads / channels / pooled_width / pooled_height;
   // (n, c, ph, pw) is an element in the pooled output
   // can be parallelized using omp
-#pragma omp parallel for \
-num_threads(engine::OpenMP::Get()->GetRecommendedOMPThreadCount())
+  #pragma omp parallel for \
+  num_threads(engine::OpenMP::Get()->GetRecommendedOMPThreadCount())
   for (int n = 0; n < n_rois; n++) {
     int index_n = n * channels * pooled_width * pooled_height;
 
@@ -222,7 +222,7 @@ num_threads(engine::OpenMP::Get()->GetRecommendedOMPThreadCount())
         roi_bin_grid_h,
         roi_bin_grid_w,
         &pre_calc);
-
+    
     for (int c = 0; c < channels; c++) {
       int index_n_c = index_n + c * pooled_width * pooled_height;
       int pre_calc_index = 0;
@@ -237,17 +237,17 @@ num_threads(engine::OpenMP::Get()->GetRecommendedOMPThreadCount())
             c_unpooled = c * pooled_height * pooled_width + ph * pooled_width + pw;
             channels_unpooled = channels * pooled_height * pooled_width;
           }
-          const T* offset_bottom_data =
+          const U* offset_bottom_data =
               bottom_data + (roi_batch_ind * channels_unpooled + c_unpooled)
               * height * width;
           T output_val = 0.;
           for (int iy = 0; iy < roi_bin_grid_h; iy++) {
             for (int ix = 0; ix < roi_bin_grid_w; ix++) {
               PreCalc<T> pc = pre_calc[pre_calc_index];
-              output_val += pc.w1 * offset_bottom_data[pc.pos1] +
-                  pc.w2 * offset_bottom_data[pc.pos2] +
-                  pc.w3 * offset_bottom_data[pc.pos3] +
-                  pc.w4 * offset_bottom_data[pc.pos4];
+              output_val += pc.w1 * static_cast<T>(offset_bottom_data[pc.pos1]) +
+                  pc.w2 * static_cast<T>(offset_bottom_data[pc.pos2]) +
+                  pc.w3 * static_cast<T>(offset_bottom_data[pc.pos3]) +
+                  pc.w4 * static_cast<T>(offset_bottom_data[pc.pos4]);
 
               pre_calc_index += 1;
             }
@@ -467,15 +467,18 @@ void ROIAlignForwardCompute(const nnvm::NodeAttrs& attrs,
   const int pooled_width = out_data[roialign::kOut].size(3);
   const int rois_cols = in_data[roialign::kBox].size(1);
 
-  // assume all the data and gradient have the same type
-  MSHADOW_REAL_TYPE_SWITCH(in_data[0].type_flag_, DType, {
-    const DType *bottom_data = in_data[roialign::kData].dptr<DType>();
-    const DType *bottom_rois = in_data[roialign::kBox].dptr<DType>();
-    DType *top_data = out_data[roialign::kOut].dptr<DType>();
+  // TODO
+  MSHADOW_REAL_TYPE_SWITCH(in_data[1].type_flag_, Type1, {
+    // Set type of bottom_data
+    MSHADOW_TYPE_SWITCH(in_data[0].type_flag_, Type0, {
+      const Type0 *bottom_data = in_data[roialign::kData].dptr<Type0>();  
+      const Type1 *bottom_rois = in_data[roialign::kBox].dptr<Type1>();
+      Type1 *top_data = out_data[roialign::kOut].dptr<Type1>();
 
-    ROIAlignForward<DType>(count, bottom_data, param.spatial_scale, param.position_sensitive,
-                           param.aligned, channels, height, width, pooled_height, pooled_width,
-                           param.sample_ratio, bottom_rois, rois_cols, top_data);
+      ROIAlignForward<Type0, Type1>(count, bottom_data, param.spatial_scale, param.position_sensitive,
+                            param.aligned, channels, height, width, pooled_height, pooled_width,
+                            param.sample_ratio, bottom_rois, rois_cols, top_data);
+    })
   })
 }
 
@@ -597,8 +600,8 @@ He, Kaiming, et al. "Mask R-CNN." ICCV, 2017
 .set_attr<nnvm::FInferType>("FInferType", [](const nnvm::NodeAttrs& attrs,
       std::vector<int> *in_type, std::vector<int> *out_type) {
   CHECK_EQ(in_type->size(), 2);
-  int dtype = (*in_type)[0];
-  CHECK_EQ(dtype, (*in_type)[1]);
+  int dtype = (*in_type)[1];
+  // CHECK_EQ(dtype, (*in_type)[0]);
   CHECK_NE(dtype, -1) << "Input must have specified type";
 
   out_type->clear();

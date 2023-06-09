@@ -47,9 +47,9 @@ inline int ROI_GET_BLOCKS(const int N) {
 }
 
 
-template <typename T>
+template <typename U, typename T>
 __device__ T bilinear_interpolate(
-    const T* bottom_data,
+    const U* bottom_data,
     const int height,
     const int width,
     T y,
@@ -91,10 +91,10 @@ __device__ T bilinear_interpolate(
   T lx = x - x_low;
   T hy = 1. - ly, hx = 1. - lx;
   // do bilinear interpolation
-  T v1 = bottom_data[y_low * width + x_low];
-  T v2 = bottom_data[y_low * width + x_high];
-  T v3 = bottom_data[y_high * width + x_low];
-  T v4 = bottom_data[y_high * width + x_high];
+  T v1 = static_cast<T>(bottom_data[y_low * width + x_low]);
+  T v2 = static_cast<T>(bottom_data[y_low * width + x_high]);
+  T v3 = static_cast<T>(bottom_data[y_high * width + x_low]);
+  T v4 = static_cast<T>(bottom_data[y_high * width + x_high]);
   T w1 = hy * hx, w2 = hy * lx, w3 = ly * hx, w4 = ly * lx;
 
   T val = (w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4);
@@ -102,10 +102,10 @@ __device__ T bilinear_interpolate(
   return val;
 }
 
-template <typename T>
+template <typename U, typename T>
 __global__ void RoIAlignForwardKernel(
     const int nthreads,
-    const T* bottom_data,
+    const U* bottom_data,
     const T spatial_scale,
     const bool position_sensitive,
     const bool continuous_coordinate,
@@ -155,7 +155,7 @@ __global__ void RoIAlignForwardKernel(
       c_unpooled = c * pooled_height * pooled_width + ph * pooled_width + pw;
       channels_unpooled = channels * pooled_height * pooled_width;
     }
-    const T* offset_bottom_data =
+    const U* offset_bottom_data =
         bottom_data + (roi_batch_ind * channels_unpooled + c_unpooled)
         * height * width;
 
@@ -179,7 +179,7 @@ __global__ void RoIAlignForwardKernel(
             static_cast<T>(ix + .5f) * bin_size_w /
                 static_cast<T>(roi_bin_grid_w);
 
-        T val = bilinear_interpolate(
+        T val = bilinear_interpolate<U, T>(
             offset_bottom_data, height, width, y, x, index);
         output_val += val;
       }
@@ -387,28 +387,32 @@ void ROIAlignForwardCompute(const nnvm::NodeAttrs& attrs,
 
   Stream<gpu> *s = ctx.get_stream<gpu>();
   cudaStream_t stream = mshadow::Stream<gpu>::GetStream(s);
-  MSHADOW_REAL_TYPE_SWITCH(in_data[0].type_flag_, DType, {
-    const DType *bottom_data = in_data[roialign::kData].dptr<DType>();
-    const DType *bottom_rois = in_data[roialign::kBox].dptr<DType>();
-    DType *top_data = out_data[roialign::kOut].dptr<DType>();
-    RoIAlignForwardKernel<DType>
-      <<<ROI_GET_BLOCKS(count),
-         kMaxThreadsPerBlock,
-         0,
-         stream>>>(
-          count,
-          bottom_data,
-          param.spatial_scale,
-          param.position_sensitive,
-          param.aligned,
-          channels,
-          height,
-          width,
-          pooled_height,
-          pooled_width,
-          param.sample_ratio,
-          bottom_rois,
-          top_data);
+  MSHADOW_REAL_TYPE_SWITCH(in_data[1].type_flag_, Type1, {
+    // Set type of bottom_data
+    MSHADOW_TYPE_SWITCH(in_data[0].type_flag_, Type0, {
+      const Type0 *bottom_data = in_data[roialign::kData].dptr<Type0>();  
+      const Type1 *bottom_rois = in_data[roialign::kBox].dptr<Type1>();
+      Type1 *top_data = out_data[roialign::kOut].dptr<Type1>();
+
+      RoIAlignForwardKernel<Type0, Type1>
+        <<<ROI_GET_BLOCKS(count),
+          kMaxThreadsPerBlock,
+          0,
+          stream>>>(
+            count,
+            bottom_data,
+            param.spatial_scale,
+            param.position_sensitive,
+            param.aligned,
+            channels,
+            height,
+            width,
+            pooled_height,
+            pooled_width,
+            param.sample_ratio,
+            bottom_rois,
+            top_data);
+    })
   })
 }
 
