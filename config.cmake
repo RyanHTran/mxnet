@@ -27,9 +27,9 @@
 #  Next modify the entries in the config.cmake like MXNET_CUDA_ARCH to set the specific
 #  GPU architecture, and then compile by
 #
-#  $ mkdir build; cd build
+#  $ mkdir build && cd build
 #  $ cmake -D OpenCV_DIR=/usr/local/opencv3.4/share/OpenCV/ -D BUILD_CPP_EXAMPLES=0 -D USE_CPP_PACKAGE=0 ..
-#  $ cmake --build . --parallel 12; cd ..; pip install -e ./python
+#  $ cmake --build . --parallel 12 && cd .. && pip install -e ./python
 #
 # Specify `cmake --build . --parallel N` to set the number of parallel compilation jobs.
 # Default is derived from CPUs available.

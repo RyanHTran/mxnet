@@ -33,6 +33,6 @@ The build configuration is specified in `config.cmake`. Modify it if necessary f
 
 Finally, build the package and install Python bindings
 
-    mkdir build; cd build
+    mkdir build && cd build
     cmake -D OpenCV_DIR=/usr/local/opencv3.4/share/OpenCV/ -D BUILD_CPP_EXAMPLES=0 -D USE_CPP_PACKAGE=0 ..
-    cmake --build . --parallel 12; cd ..; pip install -e ./python
+    cmake --build . --parallel 12 && cd .. && pip install -e ./python
