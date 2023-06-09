@@ -22,7 +22,7 @@ This repo contains a slight tweak on MXNet version 1.9.1 that enables the ROIAli
 
 ## Install OpenCV3.4
 
-This build requires OpenCV version 3.4. Follow instructions [here](https://linuxize.com/post/how-to-install-opencv-on-ubuntu-20-04/) to install it.
+This build requires OpenCV version 3.4. Follow [instructions online](https://linuxize.com/post/how-to-install-opencv-on-ubuntu-20-04/) to install it.
 
 ## Install MXNet
 Clone this repo
